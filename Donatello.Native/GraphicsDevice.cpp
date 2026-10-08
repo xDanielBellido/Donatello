@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "GraphicsDevice.h"
 
+#include <d3d12sdklayers.h>
+
 namespace Donatello
 {
     HRESULT GraphicsDevice::Initialize()
@@ -10,6 +12,23 @@ namespace Donatello
         {
             return S_OK;
         }
+
+#if defined(_DEBUG)
+        Microsoft::WRL::ComPtr<ID3D12Debug> debugController;
+
+        const HRESULT debugResult = D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()));
+
+        if (FAILED(debugResult))
+        {
+            OutputDebugStringW(L"Donatello: DirectX 12 debug layer is unavailable.\n");
+            return debugResult;
+        }
+
+        debugController->EnableDebugLayer();
+
+        OutputDebugStringW(L"Donatello: DirectX 12 debug layer enabled.\n");
+#endif
+
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
 
@@ -62,6 +81,33 @@ namespace Donatello
                 lastDeviceError = result;
                 continue;
             }
+
+#if defined(_DEBUG)
+            Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
+
+            result = device.As(&infoQueue);
+
+            if (FAILED(result))
+            {
+                return result;
+            }
+
+            result = infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+
+            if (FAILED(result))
+            {
+                return result;
+            }
+
+            result = infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+
+            if (FAILED(result))
+            {
+                return result;
+            }
+
+            OutputDebugStringW(L"Donatello: DirectX 12 diagnostic breaks configured.\n");
+#endif
 
             // Keep the objects only after initialisation succeeds.
             factory_ = factory;

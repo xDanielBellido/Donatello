@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Donatello.App": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
