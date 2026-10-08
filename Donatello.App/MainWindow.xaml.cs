@@ -19,6 +19,9 @@ namespace Donatello.App
         public MainWindow()
         {
             InitializeComponent();
+
+            int nativeVersion = NativeMethods.GetApiVersion();
+            Title = $"Donatello — Native API v{nativeVersion}";
         }
     }
 }
