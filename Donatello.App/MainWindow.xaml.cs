@@ -16,12 +16,48 @@ namespace Donatello.App
     /// </summary>
     public partial class MainWindow : Window
     {
+        private GraphicsSafeHandle? graphics;
+
         public MainWindow()
         {
             InitializeComponent();
 
             int nativeVersion = NativeMethods.GetApiVersion();
-            Title = $"Donatello — Native API v{nativeVersion}";
+            int result = NativeMethods.CreateGraphics(out GraphicsSafeHandle createdGraphics);
+
+            if (result < 0)
+            {
+                createdGraphics.Dispose();
+                Title = $"Donatello — Graphics initialisation failed: 0x{result:X8}";
+                return;
+            }
+
+            graphics = createdGraphics;
+
+            var adapterName = new StringBuilder(128);
+            result = NativeMethods.GetGraphicsAdapterName(graphics, adapterName, (uint)adapterName.Capacity);
+
+            if (result < 0)
+            {
+                Title = $"Donatello — DirectX 12 ready — Adapter name unavailable: 0x{result:X8}";
+                return;
+            }
+
+            Title = $"Donatello — Native API v{nativeVersion} — {adapterName.ToString()}";
         }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                graphics?.Dispose();
+                graphics = null;
+            }
+            finally
+            {
+                base.OnClosed(e);
+            }
+        }
+
     }
 }
