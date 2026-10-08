@@ -1,4 +1,17 @@
-﻿using System.Runtime.InteropServices;
+﻿/*
+    ===========================================================================
+    NativeMethods
+    ===========================================================================
+
+    Declares how C# calls the functions exported by Donatello.Native.dll.
+
+    Uses DllImport to specify each function's name, parameters and return type.
+    The implementations run in C++, through DonatelloApi.
+
+    These declarations must match the native API in DonatelloApi.h.
+*/
+
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Donatello.App;

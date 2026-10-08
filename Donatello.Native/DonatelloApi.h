@@ -1,3 +1,19 @@
+/*
+    ===========================================================================
+    DonatelloApi
+    ===========================================================================
+
+    Declares the C++ functions that the C# application can call through P/Invoke.
+
+    Provides operations to query the API version, create and destroy a graphics
+    context, and retrieve the selected adapter's name.
+
+    Keeps the context's contents hidden from C#. The application receives an
+    opaque handle and passes it back when calling these functions.
+
+    These declarations must match the signatures in NativeMethods.cs.
+*/
+
 #pragma once
 
 #include <cstdint>
