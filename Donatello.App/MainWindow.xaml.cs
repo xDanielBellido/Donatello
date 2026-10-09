@@ -72,11 +72,6 @@ namespace Donatello.App
             }
 
             StartRendering();
-
-            if (result < 0)
-            {
-                Title = $"Donatello — First frame failed: 0x{result:X8}";
-            }
         }
 
         protected override void OnClosed(EventArgs e)

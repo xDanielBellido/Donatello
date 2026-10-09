@@ -18,6 +18,8 @@
 #include "SwapChain.h"
 #include "CommandContext.h"
 
+#include <d3dcompiler.h>
+
 namespace Donatello
 {
     class Renderer final
@@ -27,6 +29,20 @@ namespace Donatello
         CommandQueue commandQueue_;
         SwapChain swapChain_;
         CommandContext commandContext_;
+
+        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader_;
+        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader_;
+
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_;
+
+        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+
+        HRESULT CompileShaders();
+        HRESULT CreateRootSignature();
+        HRESULT CreatePipelineState();
+        HRESULT CreateVertexBuffer();
 
     public:
         Renderer() = default;

@@ -10,11 +10,9 @@
   </PropertyGroup>
 
 	<Target Name="CopyNativeLibrary" AfterTargets="Build">
-		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.dll"
-			  DestinationFolder="$(TargetDir)" />
-		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.pdb"
-			  DestinationFolder="$(TargetDir)"
-			  Condition="'$(Configuration)' == 'Debug'" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.dll" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.pdb" DestinationFolder="$(TargetDir)" Condition="'$(Configuration)' == 'Debug'" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\Donatello.Native\Triangle.hlsl" DestinationFolder="$(TargetDir)" />
 	</Target>
 	
 </Project>

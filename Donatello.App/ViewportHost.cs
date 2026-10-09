@@ -3,12 +3,10 @@
     ViewportHost
     ===========================================================================
 
-    Hosts a native child window inside the WPF interface.
+    Hosts the native child window used for DirectX 12 presentation inside WPF.
 
-    Creates and destroys the window that will receive DirectX 12 presentation.
-    WPF manages its position and size within the application layout.
-
-    Currently displays a black Win32 control without DirectX rendering.
+    Creates and destroys the window. WPF manages its position and size.
+    The native renderer draws the frames presented in this window.
 */
 
 using System;

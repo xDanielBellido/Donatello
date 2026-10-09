@@ -49,9 +49,9 @@ namespace Donatello
         return S_OK;
     }
 
-    HRESULT CommandContext::RecordClear(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour)
+    HRESULT CommandContext::RecordTriangle(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour, ID3D12PipelineState* pipelineState, ID3D12RootSignature* rootSignature, const D3D12_VERTEX_BUFFER_VIEW& vertexBufferView)
     {
-        if (!backBuffer || !colour || rtv.ptr == 0)
+        if (!backBuffer || !colour || !pipelineState || !rootSignature || rtv.ptr == 0)
         {
             return E_POINTER;
         }
@@ -69,7 +69,7 @@ namespace Donatello
             return result;
         }
 
-        result = commandList_->Reset(allocator_.Get(), nullptr);
+        result = commandList_->Reset(allocator_.Get(), pipelineState);
 
         if (FAILED(result))
         {
@@ -88,6 +88,31 @@ namespace Donatello
 
         // Fill the entire image with the requested RGBA colour.
         commandList_->ClearRenderTargetView(rtv, colour, 0, nullptr);
+
+        // Use the current back buffer dimensions, including after resizing.
+        const D3D12_RESOURCE_DESC bufferDescription = backBuffer->GetDesc();
+
+        D3D12_VIEWPORT viewport{};
+        viewport.Width = static_cast<float>(bufferDescription.Width);
+        viewport.Height = static_cast<float>(bufferDescription.Height);
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+
+        D3D12_RECT scissor{};
+        scissor.right = static_cast<LONG>(bufferDescription.Width);
+        scissor.bottom = static_cast<LONG>(bufferDescription.Height);
+
+        commandList_->SetGraphicsRootSignature(rootSignature);
+        commandList_->RSSetViewports(1, &viewport);
+        commandList_->RSSetScissorRects(1, &scissor);
+
+        // Select the destination for the pixel shader's output.
+        commandList_->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+
+        // Read three vertices and draw one triangle.
+        commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList_->IASetVertexBuffers(0, 1, &vertexBufferView);
+        commandList_->DrawInstanced(3, 1, 0, 0);
 
         // Prepare the image for presentation.
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
