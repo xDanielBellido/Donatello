@@ -144,12 +144,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="DonatelloApi.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DonatelloApi.cpp" />
     <ClCompile Include="GraphicsDevice.cpp" />

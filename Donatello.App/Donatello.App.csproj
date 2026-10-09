@@ -10,10 +10,11 @@
   </PropertyGroup>
 
 	<Target Name="CopyNativeLibrary" AfterTargets="Build">
-		<Copy
-		  SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.dll"
-		  DestinationFolder="$(TargetDir)"
-		  SkipUnchangedFiles="true" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.dll"
+			  DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\..\x64\$(Configuration)\Donatello.Native.pdb"
+			  DestinationFolder="$(TargetDir)"
+			  Condition="'$(Configuration)' == 'Debug'" />
 	</Target>
 	
 </Project>

@@ -42,5 +42,8 @@ namespace Donatello
         HRESULT             Initialize();
         HRESULT             GetAdapterDescription(DXGI_ADAPTER_DESC1& description) const;
 
+
+        ID3D12Device*       GetDevice() const { return device_.Get(); }
+
     };
 }

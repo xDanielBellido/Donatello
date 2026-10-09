@@ -50,6 +50,7 @@ namespace Donatello.App
         {
             try
             {
+                Viewport.Dispose();
                 graphics?.Dispose();
                 graphics = null;
             }

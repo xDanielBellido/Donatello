@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "DonatelloApi.h"
+
 #include "GraphicsDevice.h"
+#include "CommandQueue.h"
 
 #include <memory>
 #include <new>
@@ -9,6 +11,7 @@
 struct DonatelloGraphics
 {
     Donatello::GraphicsDevice device;
+    Donatello::CommandQueue commandQueue;
 };
 
 int __cdecl Donatello_GetApiVersion()
@@ -29,16 +32,23 @@ std::int32_t __cdecl Donatello_CreateGraphics(DonatelloGraphics** outGraphics) n
     {
         auto graphics = std::make_unique<DonatelloGraphics>();
 
-        const HRESULT result = graphics->device.Initialize();
+        HRESULT result = graphics->device.Initialize();
 
         if (FAILED(result))
         {
-            return static_cast<std::int32_t>(result);
+            return static_cast<int32_t>(result);
+        }
+
+        result = graphics->commandQueue.Initialize(graphics->device.GetDevice());
+
+        if (FAILED(result))
+        {
+            return static_cast<int32_t>(result);
         }
 
         *outGraphics = graphics.release();
 
-        return static_cast<std::int32_t>(S_OK);
+        return static_cast<int32_t>(S_OK);
     }
     catch (const std::bad_alloc&)
     {

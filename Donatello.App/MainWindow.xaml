@@ -6,7 +6,16 @@
         xmlns:local="clr-namespace:Donatello.App"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
+    <Grid Background="#252525">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
+        <TextBlock Text="Donatello viewport" Foreground="White" Margin="12,0" VerticalAlignment="Center" />
+
+        <Border Grid.Row="1" Margin="12" BorderBrush="#555555" BorderThickness="1">
+            <local:ViewportHost x:Name="Viewport" />
+        </Border>
     </Grid>
 </Window>
