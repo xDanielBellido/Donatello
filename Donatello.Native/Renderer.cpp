@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Renderer.h"
 
+#include "ShaderCompiler.h"
+
 #include <filesystem>
 #include <cstring>
 
@@ -17,13 +19,6 @@ namespace Donatello
         }
 
         result = CompileShaders();
-
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        result = CreateRootSignature();
 
         if (FAILED(result))
         {
@@ -114,7 +109,22 @@ namespace Donatello
         const float colour[] = { 0.0f, 0.0f, 0.0f, 1.0f };
         const D3D12_CPU_DESCRIPTOR_HANDLE rtv = swapChain_.GetCurrentRenderTargetView();
 
-        result = commandContext_.RecordTriangle(backBuffer, rtv, colour, pipelineState_.Get(), rootSignature_.Get(), vertexBufferView_);
+        result = commandContext_.BeginFrame(backBuffer, rtv, colour);
+
+        if (FAILED(result))
+        {
+            return result;
+        }
+
+        result = commandContext_.Draw(graphicsPipeline_, mesh_, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        if (FAILED(result))
+        {
+            commandContext_.EndFrame(backBuffer);
+            return result;
+        }
+
+        result = commandContext_.EndFrame(backBuffer);
 
         if (FAILED(result))
         {
@@ -164,76 +174,34 @@ namespace Donatello
         flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        Microsoft::WRL::ComPtr<ID3DBlob> messages;
+        auto vertexShader = ShaderCompiler::Compile(shaderPath.c_str(), "VSMain", "vs_5_0", flags);
 
-        HRESULT result = D3DCompileFromFile(shaderPath.c_str(), nullptr, nullptr, "VSMain", "vs_5_0", flags, 0, vertexShader.GetAddressOf(), messages.GetAddressOf());
-
-        if (messages)
+        if (vertexShader.diagnostics)
         {
-            OutputDebugStringA(static_cast<const char*>(messages->GetBufferPointer()));
+            OutputDebugStringA(static_cast<const char*>(vertexShader.diagnostics->GetBufferPointer()));
         }
 
-        if (FAILED(result))
+        if (FAILED(vertexShader.result))
         {
-            return result;
+            return vertexShader.result;
         }
 
-        messages.Reset();
+        auto pixelShader = ShaderCompiler::Compile(shaderPath.c_str(), "PSMain", "ps_5_0", flags);
 
-        result = D3DCompileFromFile(shaderPath.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", flags, 0, pixelShader.GetAddressOf(), messages.GetAddressOf());
-
-        if (messages)
+        if (pixelShader.diagnostics)
         {
-            OutputDebugStringA(static_cast<const char*>(messages->GetBufferPointer()));
+            OutputDebugStringA(static_cast<const char*>(pixelShader.diagnostics->GetBufferPointer()));
         }
 
-        if (FAILED(result))
+        if (FAILED(pixelShader.result))
         {
-            return result;
+            return pixelShader.result;
         }
 
-        vertexShader_ = vertexShader;
-        pixelShader_ = pixelShader;
+        vertexShader_ = vertexShader.bytecode;
+        pixelShader_ = pixelShader.bytecode;
 
         OutputDebugStringW(L"Donatello: triangle shaders compiled successfully.\n");
-
-        return S_OK;
-    }
-
-    HRESULT Renderer::CreateRootSignature()
-    {
-        D3D12_ROOT_SIGNATURE_DESC description{};
-        description.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-        Microsoft::WRL::ComPtr<ID3DBlob> serialised;
-        Microsoft::WRL::ComPtr<ID3DBlob> messages;
-
-        HRESULT result = D3D12SerializeRootSignature(&description, D3D_ROOT_SIGNATURE_VERSION_1, serialised.GetAddressOf(), messages.GetAddressOf());
-
-        if (messages)
-        {
-            OutputDebugStringA(static_cast<const char*>(messages->GetBufferPointer()));
-        }
-
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-
-        result = device_.GetDevice()->CreateRootSignature(0, serialised->GetBufferPointer(), serialised->GetBufferSize(), IID_PPV_ARGS(rootSignature.GetAddressOf()));
-
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        rootSignature_ = rootSignature;
-
-        OutputDebugStringW(L"Donatello: triangle root signature created successfully.\n");
 
         return S_OK;
     }
@@ -248,7 +216,6 @@ namespace Donatello
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC description{};
 
-        description.pRootSignature = rootSignature_.Get();
         description.VS = { vertexShader_->GetBufferPointer(), vertexShader_->GetBufferSize() };
         description.PS = { pixelShader_->GetBufferPointer(), pixelShader_->GetBufferSize() };
         description.InputLayout = { inputLayout, 2 };
@@ -289,18 +256,17 @@ namespace Donatello
         description.SampleDesc.Count = 1;
         description.SampleMask = 0xffffffffu;
 
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+        D3D12_ROOT_SIGNATURE_DESC rootDescription{};
+        rootDescription.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        HRESULT result = device_.GetDevice()->CreateGraphicsPipelineState(&description, IID_PPV_ARGS(pipelineState.GetAddressOf()));
+        HRESULT result = graphicsPipeline_.Initialize(device_.GetDevice(), rootDescription, description);
 
         if (FAILED(result))
         {
             return result;
         }
 
-        pipelineState_ = pipelineState;
-
-        OutputDebugStringW(L"Donatello: triangle pipeline state created successfully.\n");
+        OutputDebugStringW(L"Donatello: graphics pipeline created successfully.\n");
 
         return S_OK;
     }
@@ -320,53 +286,17 @@ namespace Donatello
             { { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
         };
 
-        D3D12_HEAP_PROPERTIES heap{};
-        heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heap.CreationNodeMask = 1;
-        heap.VisibleNodeMask = 1;
+        const UINT vertexCount = static_cast<UINT>(sizeof(vertices) / sizeof(vertices[0]));
+        const UINT vertexStride = static_cast<UINT>(sizeof(Vertex));
 
-        D3D12_RESOURCE_DESC description{};
-        description.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        description.Width = sizeof(vertices);
-        description.Height = 1;
-        description.DepthOrArraySize = 1;
-        description.MipLevels = 1;
-        description.SampleDesc.Count = 1;
-        description.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
-
-        HRESULT result = device_.GetDevice()->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &description, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(vertexBuffer.GetAddressOf()));
+        HRESULT result = mesh_.Initialize(device_.GetDevice(), vertices, vertexCount, vertexStride);
 
         if (FAILED(result))
         {
             return result;
         }
 
-        void* mappedData = nullptr;
-        const D3D12_RANGE readRange{ 0, 0 };
-
-        result = vertexBuffer->Map(0, &readRange, &mappedData);
-
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        std::memcpy(mappedData, vertices, sizeof(vertices));
-
-        const D3D12_RANGE writtenRange{ 0, sizeof(vertices) };
-        vertexBuffer->Unmap(0, &writtenRange);
-
-        D3D12_VERTEX_BUFFER_VIEW view{};
-        view.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-        view.SizeInBytes = static_cast<UINT>(sizeof(vertices));
-        view.StrideInBytes = static_cast<UINT>(sizeof(Vertex));
-
-        vertexBuffer_ = vertexBuffer;
-        vertexBufferView_ = view;
-
-        OutputDebugStringW(L"Donatello: triangle vertex buffer created successfully.\n");
+        OutputDebugStringW(L"Donatello: GPU mesh created successfully.\n");
 
         return S_OK;
     }

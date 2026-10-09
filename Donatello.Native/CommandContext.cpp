@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "CommandContext.h"
 
+#include "GraphicsPipeline.h"
+#include "GpuMesh.h"
+
 namespace Donatello
 {
     HRESULT CommandContext::Initialize(ID3D12Device* device)
@@ -49,14 +52,14 @@ namespace Donatello
         return S_OK;
     }
 
-    HRESULT CommandContext::RecordTriangle(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour, ID3D12PipelineState* pipelineState, ID3D12RootSignature* rootSignature, const D3D12_VERTEX_BUFFER_VIEW& vertexBufferView)
+    HRESULT CommandContext::BeginFrame(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour)
     {
-        if (!backBuffer || !colour || !pipelineState || !rootSignature || rtv.ptr == 0)
+        if (!backBuffer || !colour || rtv.ptr == 0)
         {
             return E_POINTER;
         }
 
-        if (!allocator_ || !commandList_)
+        if (!allocator_ || !commandList_ || recording_)
         {
             return E_UNEXPECTED;
         }
@@ -69,7 +72,7 @@ namespace Donatello
             return result;
         }
 
-        result = commandList_->Reset(allocator_.Get(), pipelineState);
+        result = commandList_->Reset(allocator_.Get(), nullptr);
 
         if (FAILED(result))
         {
@@ -102,24 +105,72 @@ namespace Donatello
         scissor.right = static_cast<LONG>(bufferDescription.Width);
         scissor.bottom = static_cast<LONG>(bufferDescription.Height);
 
-        commandList_->SetGraphicsRootSignature(rootSignature);
         commandList_->RSSetViewports(1, &viewport);
         commandList_->RSSetScissorRects(1, &scissor);
 
         // Select the destination for the pixel shader's output.
         commandList_->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
-        // Read three vertices and draw one triangle.
-        commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        commandList_->IASetVertexBuffers(0, 1, &vertexBufferView);
-        commandList_->DrawInstanced(3, 1, 0, 0);
+        recording_ = true;
 
-        // Prepare the image for presentation.
+        return S_OK;
+    }
+
+    HRESULT CommandContext::Draw(const GraphicsPipeline& pipeline, const GpuMesh& mesh, D3D_PRIMITIVE_TOPOLOGY topology)
+    {
+        if (!recording_)
+        {
+            return E_UNEXPECTED;
+        }
+
+        ID3D12PipelineState* pipelineState = pipeline.GetPipelineState();
+        ID3D12RootSignature* rootSignature = pipeline.GetRootSignature();
+        const auto& vertexBufferView = mesh.GetVertexBufferView();
+
+        if (!pipelineState || !rootSignature || vertexBufferView.BufferLocation == 0 || mesh.GetVertexCount() == 0)
+        {
+            return E_INVALIDARG;
+        }
+
+        if (topology == D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
+        {
+            return E_INVALIDARG;
+        }
+
+        commandList_->SetPipelineState(pipelineState);
+        commandList_->SetGraphicsRootSignature(rootSignature);
+        commandList_->IASetPrimitiveTopology(topology);
+        commandList_->IASetVertexBuffers(0, 1, &vertexBufferView);
+        commandList_->DrawInstanced(mesh.GetVertexCount(), 1, 0, 0);
+
+        return S_OK;
+    }
+
+    HRESULT CommandContext::EndFrame(ID3D12Resource* backBuffer)
+    {
+        if (!backBuffer)
+        {
+            return E_POINTER;
+        }
+
+        if (!recording_)
+        {
+            return E_UNEXPECTED;
+        }
+
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = backBuffer;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 
         commandList_->ResourceBarrier(1, &barrier);
 
-        return commandList_->Close();
+        HRESULT result = commandList_->Close();
+        recording_ = false;
+
+        return result;
     }
+
 }

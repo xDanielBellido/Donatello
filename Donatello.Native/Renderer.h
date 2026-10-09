@@ -18,6 +18,9 @@
 #include "SwapChain.h"
 #include "CommandContext.h"
 
+#include "GraphicsPipeline.h"
+#include "GpuMesh.h"
+
 #include <d3dcompiler.h>
 
 namespace Donatello
@@ -33,14 +36,11 @@ namespace Donatello
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader_;
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader_;
 
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_;
+        GraphicsPipeline graphicsPipeline_;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+        GpuMesh mesh_;
 
         HRESULT CompileShaders();
-        HRESULT CreateRootSignature();
         HRESULT CreatePipelineState();
         HRESULT CreateVertexBuffer();
 

@@ -21,11 +21,16 @@
 
 namespace Donatello
 {
+    class GraphicsPipeline;
+    class GpuMesh;
+
     class CommandContext final
     {
     private:
         Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator_;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_;
+
+        bool recording_ = false;
 
     public:
         CommandContext() = default;
@@ -36,7 +41,10 @@ namespace Donatello
 
         HRESULT                     Initialize(ID3D12Device* device);
 
-        HRESULT                     RecordTriangle(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour, ID3D12PipelineState* pipelineState, ID3D12RootSignature* rootSignature, const D3D12_VERTEX_BUFFER_VIEW& vertexBufferView);
+        HRESULT BeginFrame(ID3D12Resource* backBuffer, D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float* colour);
+        HRESULT Draw(const GraphicsPipeline& pipeline, const GpuMesh& mesh, D3D_PRIMITIVE_TOPOLOGY topology);
+        HRESULT EndFrame(ID3D12Resource* backBuffer);
+
         ID3D12GraphicsCommandList*  GetCommandList() const { return commandList_.Get(); }
     };
 }
