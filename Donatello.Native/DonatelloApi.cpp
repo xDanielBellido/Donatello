@@ -3,6 +3,7 @@
 
 #include "GraphicsDevice.h"
 #include "CommandQueue.h"
+#include "SwapChain.h"
 
 #include <memory>
 #include <new>
@@ -12,6 +13,7 @@ struct DonatelloGraphics
 {
     Donatello::GraphicsDevice device;
     Donatello::CommandQueue commandQueue;
+    Donatello::SwapChain swapChain;
 };
 
 int __cdecl Donatello_GetApiVersion()
@@ -102,4 +104,16 @@ std::int32_t __cdecl Donatello_GetGraphicsAdapterName(DonatelloGraphics* graphic
     std::wmemcpy(buffer, description.Description, requiredCapacity);
 
     return static_cast<std::int32_t>(S_OK);
+}
+
+std::int32_t __cdecl Donatello_CreateSwapChain(DonatelloGraphics* graphics, void* window) noexcept
+{
+    if (graphics == nullptr)
+    {
+        return static_cast<std::int32_t>(E_POINTER);
+    }
+
+    const HRESULT result = graphics->swapChain.Initialize(graphics->device.GetDevice(), graphics->device.GetFactory(), graphics->commandQueue.GetQueue(), static_cast<HWND>(window));
+
+    return static_cast<std::int32_t>(result);
 }

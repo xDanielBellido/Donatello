@@ -3,9 +3,9 @@
 
 namespace Donatello
 {
-    HRESULT SwapChain::Initialize(IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window)
+    HRESULT SwapChain::Initialize(ID3D12Device* device, IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window)
     {
-        if (!factory || !queue)
+        if (!device || !factory || !queue)
         {
             return E_POINTER;
         }
@@ -26,7 +26,7 @@ namespace Donatello
         description.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         description.SampleDesc.Count = 1;
         description.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        description.BufferCount = 2;
+        description.BufferCount = BufferCount;
         description.Scaling = DXGI_SCALING_STRETCH;
         description.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         description.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
@@ -40,15 +40,55 @@ namespace Donatello
             return result;
         }
 
-        result = swapChain.As(&swapChain_);
+        Microsoft::WRL::ComPtr<IDXGISwapChain3> swapChain3;
+        result = swapChain.As(&swapChain3);
 
         if (FAILED(result))
         {
             return result;
         }
 
+        // Reserve one descriptor slot for each back buffer.
+        D3D12_DESCRIPTOR_HEAP_DESC heapDescription{};
+        heapDescription.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        heapDescription.NumDescriptors = BufferCount;
+        heapDescription.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+        result = device->CreateDescriptorHeap(&heapDescription, IID_PPV_ARGS(rtvHeap.GetAddressOf()));
+
+        if (FAILED(result))
+        {
+            return result;
+        }
+
+        const UINT descriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, BufferCount> backBuffers{};
+
+        // Retrieve each existing image and create its render target view.
+        for (UINT index = 0; index < BufferCount; ++index)
+        {
+            result = swapChain3->GetBuffer(index, IID_PPV_ARGS(backBuffers[index].GetAddressOf()));
+
+            if (FAILED(result))
+            {
+                return result;
+            }
+
+            device->CreateRenderTargetView(backBuffers[index].Get(), nullptr, rtvHandle);
+            rtvHandle.ptr += descriptorSize;
+        }
+
+        // Keep the objects only after initialisation has succeeded.
+        swapChain_ = swapChain3;
+        rtvHeap_ = rtvHeap;
+        backBuffers_ = backBuffers;
+        rtvDescriptorSize_ = descriptorSize;
+
 #if defined(_DEBUG)
-        OutputDebugStringW(L"Donatello: viewport swap chain created.\n");
+        OutputDebugStringW(L"Donatello: viewport swap chain and render target views created.\n");
 #endif
 
         return S_OK;

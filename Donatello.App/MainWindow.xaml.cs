@@ -33,6 +33,7 @@ namespace Donatello.App
             }
 
             graphics = createdGraphics;
+            Viewport.Loaded += OnViewportLoaded;
 
             var adapterName = new StringBuilder(128);
             result = NativeMethods.GetGraphicsAdapterName(graphics, adapterName, (uint)adapterName.Capacity);
@@ -46,13 +47,39 @@ namespace Donatello.App
             Title = $"Donatello — Native API v{nativeVersion} — {adapterName.ToString()}";
         }
 
+        private void OnViewportLoaded(object sender, RoutedEventArgs e)
+        {
+            Viewport.Loaded -= OnViewportLoaded;
+
+            if (graphics is null || graphics.IsInvalid || graphics.IsClosed)
+            {
+                return;
+            }
+
+            if (Viewport.Handle == IntPtr.Zero)
+            {
+                Title = "Donatello — Native viewport handle is unavailable";
+                return;
+            }
+
+            int result = NativeMethods.CreateSwapChain(graphics, Viewport.Handle);
+
+            if (result < 0)
+            {
+                Title = $"Donatello — Swap chain initialisation failed: 0x{result:X8}";
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             try
             {
-                Viewport.Dispose();
+                Viewport.Loaded -= OnViewportLoaded;
+
                 graphics?.Dispose();
                 graphics = null;
+
+                Viewport.Dispose();
             }
             finally
             {

@@ -44,6 +44,7 @@ namespace Donatello
 
 
         ID3D12Device*       GetDevice() const { return device_.Get(); }
+        IDXGIFactory6*      GetFactory() const { return factory_.Get(); }
 
     };
 }

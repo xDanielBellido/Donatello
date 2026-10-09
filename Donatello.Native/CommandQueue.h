@@ -1,4 +1,4 @@
-#/*
+/*
     ===========================================================================
     CommandQueue
     ===========================================================================
@@ -30,6 +30,8 @@ namespace Donatello
         CommandQueue(const CommandQueue&) = delete;
         CommandQueue& operator=(const CommandQueue&) = delete;
 
-        HRESULT             Initialize(ID3D12Device* device);
+        HRESULT                 Initialize(ID3D12Device* device);
+
+        ID3D12CommandQueue*     GetQueue() const { return queue_.Get(); }
     };
 }

@@ -30,4 +30,7 @@ internal static class NativeMethods
     [DllImport("Donatello.Native.dll", EntryPoint = "Donatello_GetGraphicsAdapterName", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, ExactSpelling = true)]
     internal static extern int GetGraphicsAdapterName(GraphicsSafeHandle graphics, [Out] StringBuilder buffer, uint capacity);
 
+    [DllImport("Donatello.Native.dll", EntryPoint = "Donatello_CreateSwapChain", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int CreateSwapChain(GraphicsSafeHandle graphics, IntPtr window);
+
 }

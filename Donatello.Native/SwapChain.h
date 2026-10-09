@@ -5,8 +5,8 @@
 
     Owns the DXGI swap chain associated with a native viewport window.
 
-    Creates two back buffers that will hold the images rendered for display.
-    ComPtr releases the swap chain when this object is destroyed.
+    Holds references to its two back buffers and stores their render target
+    views in a descriptor heap, allowing them to be used as drawing targets.
 
     Does not yet present images or handle viewport resizing.
 */
@@ -17,12 +17,20 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
+#include <array>
+
 namespace Donatello
 {
     class SwapChain final
     {
     private:
+    private:
+        static constexpr UINT BufferCount = 2;
+
         Microsoft::WRL::ComPtr<IDXGISwapChain3> swapChain_;
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap_;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, BufferCount> backBuffers_;
+        UINT rtvDescriptorSize_ = 0;
 
     public:
         SwapChain() = default;
@@ -31,6 +39,6 @@ namespace Donatello
         SwapChain(const SwapChain&) = delete;
         SwapChain& operator=(const SwapChain&) = delete;
 
-        HRESULT             Initialize(IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window);
+        HRESULT Initialize(ID3D12Device* device, IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window);
     };
 }
