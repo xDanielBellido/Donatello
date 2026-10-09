@@ -2,6 +2,7 @@
 #include "DonatelloApi.h"
 
 #include "Renderer.h"
+#include "DemoContent.h"
 
 #include <memory>
 #include <new>
@@ -10,6 +11,19 @@
 struct DonatelloGraphics
 {
     Donatello::Renderer renderer;
+    Donatello::DemoContent demo;
+
+    ~DonatelloGraphics() noexcept
+    {
+        const HRESULT result = renderer.WaitForIdle();
+
+        if (FAILED(result))
+        {
+            wchar_t message[128]{};
+            swprintf_s(message, L"Donatello: GPU shutdown wait failed with HRESULT 0x%08X.\n", static_cast<unsigned int>(result));
+            OutputDebugStringW(message);
+        }
+    }
 };
 
 int __cdecl Donatello_GetApiVersion()
@@ -29,7 +43,14 @@ std::int32_t __cdecl Donatello_CreateGraphics(DonatelloGraphics** outGraphics) n
     try
     {
         auto graphics = std::make_unique<DonatelloGraphics>();
-        const HRESULT result = graphics->renderer.Initialize();
+        HRESULT result = graphics->renderer.Initialize();
+
+        if (FAILED(result))
+        {
+            return static_cast<std::int32_t>(result);
+        }
+
+        result = graphics->demo.Initialize(graphics->renderer.GetDevice());
 
         if (FAILED(result))
         {
@@ -110,5 +131,7 @@ std::int32_t __cdecl Donatello_RenderFrame(DonatelloGraphics* graphics) noexcept
         return static_cast<std::int32_t>(E_POINTER);
     }
 
-    return static_cast<std::int32_t>(graphics->renderer.RenderFrame());
+    const Donatello::RenderItem items[] = { graphics->demo.GetRenderItem() };
+
+    return static_cast<std::int32_t>(graphics->renderer.RenderFrame(items));
 }

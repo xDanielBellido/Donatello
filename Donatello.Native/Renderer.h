@@ -18,10 +18,9 @@
 #include "SwapChain.h"
 #include "CommandContext.h"
 
-#include "GraphicsPipeline.h"
-#include "GpuMesh.h"
+#include "RenderItem.h"
 
-#include <d3dcompiler.h>
+#include <span>
 
 namespace Donatello
 {
@@ -33,17 +32,6 @@ namespace Donatello
         SwapChain swapChain_;
         CommandContext commandContext_;
 
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader_;
-        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader_;
-
-        GraphicsPipeline graphicsPipeline_;
-
-        GpuMesh mesh_;
-
-        HRESULT CompileShaders();
-        HRESULT CreatePipelineState();
-        HRESULT CreateVertexBuffer();
-
     public:
         Renderer() = default;
         ~Renderer() = default;
@@ -53,7 +41,10 @@ namespace Donatello
 
         HRESULT             Initialize();
         HRESULT             CreateViewport(HWND window);
-        HRESULT             RenderFrame();
+        HRESULT             RenderFrame(std::span<const RenderItem> items);
+        HRESULT WaitForIdle();
+
+        ID3D12Device*       GetDevice() const { return device_.GetDevice(); };
         HRESULT             GetAdapterDescription(DXGI_ADAPTER_DESC1& description) const;
     };
 }
