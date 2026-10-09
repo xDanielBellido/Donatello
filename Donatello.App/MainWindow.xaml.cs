@@ -67,6 +67,14 @@ namespace Donatello.App
             if (result < 0)
             {
                 Title = $"Donatello — Swap chain initialisation failed: 0x{result:X8}";
+                return;
+            }
+
+            result = NativeMethods.RenderFrame(graphics);
+
+            if (result < 0)
+            {
+                Title = $"Donatello — First frame failed: 0x{result:X8}";
             }
         }
 

@@ -8,7 +8,8 @@
     Holds references to its two back buffers and stores their render target
     views in a descriptor heap, allowing them to be used as drawing targets.
 
-    Does not yet present images or handle viewport resizing.
+    Provides access to the current back buffer and presents rendered images.
+    Does not yet handle viewport resizing.
 */
 
 #pragma once
@@ -40,5 +41,9 @@ namespace Donatello
         SwapChain& operator=(const SwapChain&) = delete;
 
         HRESULT Initialize(ID3D12Device* device, IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window);
+
+        ID3D12Resource* GetCurrentBackBuffer() const;
+        D3D12_CPU_DESCRIPTOR_HANDLE  GetCurrentRenderTargetView() const;
+        HRESULT                     Present();
     };
 }

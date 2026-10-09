@@ -34,3 +34,6 @@ Donatello_GetGraphicsAdapterName(DonatelloGraphics* graphics, wchar_t* buffer, s
 
 extern "C" __declspec(dllexport) std::int32_t __cdecl 
 Donatello_CreateSwapChain(DonatelloGraphics* graphics, void* window) noexcept;
+
+extern "C" __declspec(dllexport) std::int32_t __cdecl 
+Donatello_RenderFrame(DonatelloGraphics* graphics) noexcept;

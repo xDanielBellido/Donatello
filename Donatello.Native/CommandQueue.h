@@ -3,16 +3,18 @@
     CommandQueue
     ===========================================================================
 
-    Owns the DirectX 12 graphics queue that will receive work for the GPU.
+    Owns the DirectX 12 graphics queue and a fence used to track its progress.
 
-    Creates the queue using an existing graphics device. ComPtr releases the
-    queue automatically when this object is destroyed.
+    WaitForIdle blocks the calling CPU thread until the GPU reaches a marker
+    placed after previously submitted work on this queue.
 
-    Does not yet submit commands or wait for GPU completion.
+    Releases its COM objects and closes its Windows event on destruction.
+    GPU work must finish before dependent resources are destroyed.
 */
 
 #pragma once
 
+#include <cstdint>
 #include <d3d12.h>
 #include <wrl/client.h>
 
@@ -22,16 +24,21 @@ namespace Donatello
     {
     private:
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue_;
+        Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
+        HANDLE fenceEvent_ = nullptr;
+        UINT64 fenceValue_ = 0;
 
     public:
         CommandQueue() = default;
-        ~CommandQueue() = default;
+        ~CommandQueue();
 
         CommandQueue(const CommandQueue&) = delete;
         CommandQueue& operator=(const CommandQueue&) = delete;
 
-        HRESULT                 Initialize(ID3D12Device* device);
+        HRESULT             Initialize(ID3D12Device* device);
+        HRESULT             WaitForIdle();
+        HRESULT             Execute(ID3D12CommandList* commandList);
 
-        ID3D12CommandQueue*     GetQueue() const { return queue_.Get(); }
+        ID3D12CommandQueue* GetQueue() const { return queue_.Get(); }
     };
 }

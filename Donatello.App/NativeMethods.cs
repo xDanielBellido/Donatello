@@ -33,4 +33,7 @@ internal static class NativeMethods
     [DllImport("Donatello.Native.dll", EntryPoint = "Donatello_CreateSwapChain", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int CreateSwapChain(GraphicsSafeHandle graphics, IntPtr window);
 
+    [DllImport("Donatello.Native.dll", EntryPoint = "Donatello_RenderFrame", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int RenderFrame(GraphicsSafeHandle graphics);
+
 }

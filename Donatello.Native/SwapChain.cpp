@@ -93,4 +93,40 @@ namespace Donatello
 
         return S_OK;
     }
+
+    ID3D12Resource* SwapChain::GetCurrentBackBuffer() const
+    {
+        if (!swapChain_)
+        {
+            return nullptr;
+        }
+
+        const UINT index = swapChain_->GetCurrentBackBufferIndex();
+        return backBuffers_[index].Get();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::GetCurrentRenderTargetView() const
+    {
+        if (!swapChain_ || !rtvHeap_)
+        {
+            return {};
+        }
+
+        const UINT index = swapChain_->GetCurrentBackBufferIndex();
+        D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += static_cast<SIZE_T>(index) * rtvDescriptorSize_;
+
+        return handle;
+    }
+
+    HRESULT SwapChain::Present()
+    {
+        if (!swapChain_)
+        {
+            return E_UNEXPECTED;
+        }
+
+        return swapChain_->Present(1, 0);
+    }
+
 }
