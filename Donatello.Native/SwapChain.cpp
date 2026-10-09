@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "SwapChain.h"
 
+#include <cwchar>
+
 namespace Donatello
 {
     HRESULT SwapChain::Initialize(ID3D12Device* device, IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window)
@@ -127,6 +129,97 @@ namespace Donatello
         }
 
         return swapChain_->Present(1, 0);
+    }
+
+    HRESULT SwapChain::ResizeToWindow(ID3D12Device* device)
+    {
+        if (!device)
+        {
+            return E_POINTER;
+        }
+
+        if (!swapChain_ || !rtvHeap_ || !GetCurrentBackBuffer())
+        {
+            return E_UNEXPECTED;
+        }
+
+        HWND window = nullptr;
+        HRESULT result = swapChain_->GetHwnd(&window);
+
+        if (FAILED(result))
+        {
+            return result;
+        }
+
+        RECT clientArea{};
+
+        if (!GetClientRect(window, &clientArea))
+        {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+
+        const LONG clientWidth = clientArea.right - clientArea.left;
+        const LONG clientHeight = clientArea.bottom - clientArea.top;
+
+        if (clientWidth <= 0 || clientHeight <= 0)
+        {
+            return S_FALSE;
+        }
+
+        const UINT width = static_cast<UINT>(clientWidth);
+        const UINT height = static_cast<UINT>(clientHeight);
+
+        DXGI_SWAP_CHAIN_DESC1 description{};
+        result = swapChain_->GetDesc1(&description);
+
+        if (FAILED(result))
+        {
+            return result;
+        }
+
+        if (description.Width == width && description.Height == height)
+        {
+            return S_OK;
+        }
+
+        // The caller must have finished previous GPU work before reaching this point.
+        for (auto& backBuffer : backBuffers_)
+        {
+            backBuffer.Reset();
+        }
+
+        result = swapChain_->ResizeBuffers(BufferCount, width, height, description.Format, description.Flags);
+
+        if (FAILED(result))
+        {
+            return result;
+        }
+
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, BufferCount> backBuffers{};
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
+
+        for (UINT index = 0; index < BufferCount; ++index)
+        {
+            result = swapChain_->GetBuffer(index, IID_PPV_ARGS(backBuffers[index].GetAddressOf()));
+
+            if (FAILED(result))
+            {
+                return result;
+            }
+
+            device->CreateRenderTargetView(backBuffers[index].Get(), nullptr, rtvHandle);
+            rtvHandle.ptr += rtvDescriptorSize_;
+        }
+
+        backBuffers_ = backBuffers;
+
+#if defined(_DEBUG)
+        wchar_t message[128]{};
+        swprintf_s(message, L"Donatello: viewport buffers resized to %u x %u pixels.\n", width, height);
+        OutputDebugStringW(message);
+#endif
+
+        return S_OK;
     }
 
 }

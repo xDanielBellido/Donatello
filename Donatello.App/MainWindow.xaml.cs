@@ -17,6 +17,7 @@ namespace Donatello.App
     public partial class MainWindow : Window
     {
         private GraphicsSafeHandle? graphics;
+        private bool rendering;
 
         public MainWindow()
         {
@@ -70,7 +71,7 @@ namespace Donatello.App
                 return;
             }
 
-            result = NativeMethods.RenderFrame(graphics);
+            StartRendering();
 
             if (result < 0)
             {
@@ -82,6 +83,7 @@ namespace Donatello.App
         {
             try
             {
+                StopRendering();
                 Viewport.Loaded -= OnViewportLoaded;
 
                 graphics?.Dispose();
@@ -92,6 +94,49 @@ namespace Donatello.App
             finally
             {
                 base.OnClosed(e);
+            }
+        }
+
+        private void StartRendering()
+        {
+            if (rendering)
+            {
+                return;
+            }
+
+            CompositionTarget.Rendering += OnRendering;
+            rendering = true;
+        }
+
+        private void StopRendering()
+        {
+            if (!rendering)
+            {
+                return;
+            }
+
+            CompositionTarget.Rendering -= OnRendering;
+            rendering = false;
+        }
+
+        private void OnRendering(object? sender, EventArgs e)
+        {
+            if (graphics is null || graphics.IsInvalid || graphics.IsClosed)
+            {
+                return;
+            }
+
+            if (WindowState == WindowState.Minimized || !Viewport.IsVisible)
+            {
+                return;
+            }
+
+            int result = NativeMethods.RenderFrame(graphics);
+
+            if (result < 0)
+            {
+                StopRendering();
+                Title = $"Donatello — Rendering failed: 0x{result:X8}";
             }
         }
 

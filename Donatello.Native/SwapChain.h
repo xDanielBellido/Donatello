@@ -9,7 +9,7 @@
     views in a descriptor heap, allowing them to be used as drawing targets.
 
     Provides access to the current back buffer and presents rendered images.
-    Does not yet handle viewport resizing.
+    Recreates the back buffers and their views when the viewport size changes.
 */
 
 #pragma once
@@ -41,6 +41,9 @@ namespace Donatello
         SwapChain& operator=(const SwapChain&) = delete;
 
         HRESULT Initialize(ID3D12Device* device, IDXGIFactory2* factory, ID3D12CommandQueue* queue, HWND window);
+
+        // Requires previous GPU work to have finished. Returns S_FALSE for an empty viewport.
+        HRESULT ResizeToWindow(ID3D12Device* device);
 
         ID3D12Resource* GetCurrentBackBuffer() const;
         D3D12_CPU_DESCRIPTOR_HANDLE  GetCurrentRenderTargetView() const;
